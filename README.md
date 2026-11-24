@@ -44,14 +44,14 @@ Check the genesis hash above. Compare finalized block hashes at the same height 
 
 ## Build from source
 
-The Rust workspace includes the native node, runtime, pallets, mining client, and the patched consensus dependency. The mainnet build embeds the genesis runtime Wasm from `artifacts/` and checks the raw specification fingerprint at startup. On Linux use a Rust toolchain compatible with the locked dependencies, Cargo, a C/C++ compiler, CMake, Clang/libclang, pkg-config and protoc.
+The Rust workspace includes the native node, runtime, pallets, mining client, and the patched consensus dependency. The mainnet build embeds the genesis runtime Wasm from `artifacts/` and checks the raw specification fingerprint at startup. On Linux use Rust 1.89.0, Cargo, a C/C++ compiler, CMake, Clang/libclang, pkg-config and protoc.
 
 ```sh
-cargo build --locked --release -p eagle-node --bin eagle-node --features svy-boot3-cpu
+SKIP_WASM_BUILD=1 cargo build --locked --release -p eagle-node --bin eagle-node --features svy-boot3-cpu
 ./target/release/eagle-node --chain ./network/mainnet.raw.json --base-path ./svy-data --sync full
 ```
 
-The default role is a non-voting full node. Source-level regression tests and historical consensus rules are kept for verification of existing blocks. Licensing follows the crate manifests and source notices, including the vendored Substrate consensus crate.
+The build uses the checked-in genesis Wasm. SKIP_WASM_BUILD skips auxiliary SDK Wasm builds. Use full synchronization so the node executes and verifies historical blocks. The default role is a non-voting full node. Source-level regression tests and historical consensus rules are kept for verification of existing blocks. Licensing follows the crate manifests and source notices, including the vendored Substrate consensus crate.
 
 ## GPU mining
 
