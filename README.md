@@ -56,3 +56,5 @@ The build uses the checked-in genesis Wasm. SKIP_WASM_BUILD skips auxiliary SDK 
 ## GPU mining
 
 GPU miners can connect to a pool using the Solvyren miner and an SVY payout address. The pool uses SMW/1 over TLS on port 18444. [Mining clients and pool endpoints](https://solvyren.com/downloads/smw/)
+
+[Integration guide for third-party mining platforms (中文)](docs/pool-listing.md)
