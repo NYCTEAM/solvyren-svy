@@ -1,0 +1,137 @@
+[package]
+name = "eagle-node"
+description = "A solochain node template built with Substrate, part of Polkadot Sdk."
+version = "0.1.0"
+license = "Unlicense"
+authors.workspace = true
+homepage.workspace = true
+repository.workspace = true
+edition.workspace = true
+publish = false
+
+build = "build.rs"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+
+[dependencies]
+async-trait.workspace = true
+blake2 = "0.10.6"
+clap = { features = ["derive"], workspace = true }
+frame-metadata-hash-extension.default-features = true
+frame-metadata-hash-extension.workspace = true
+frame-system.default-features = true
+frame-system.workspace = true
+futures = { features = ["thread-pool"], workspace = true }
+futures-timer = "3.0.3"
+jsonrpsee = { features = ["server"], workspace = true }
+pallet-transaction-payment.default-features = true
+pallet-transaction-payment.workspace = true
+pallet-transaction-payment-rpc.default-features = true
+pallet-transaction-payment-rpc.workspace = true
+sc-basic-authorship.default-features = true
+sc-basic-authorship.workspace = true
+sc-cli.default-features = true
+sc-cli.workspace = true
+sc-client-api.default-features = true
+sc-client-api.workspace = true
+sc-consensus.default-features = true
+sc-consensus.workspace = true
+sc-consensus-aura.default-features = true
+sc-consensus-aura.workspace = true
+sc-consensus-grandpa.default-features = true
+sc-consensus-grandpa.workspace = true
+sc-consensus-pow.workspace = true
+sc-executor.default-features = true
+sc-executor.workspace = true
+sc-network.default-features = true
+sc-network.workspace = true
+sc-offchain.default-features = true
+sc-offchain.workspace = true
+sc-service.default-features = true
+sc-service.workspace = true
+sc-telemetry.default-features = true
+sc-telemetry.workspace = true
+sc-transaction-pool.default-features = true
+sc-transaction-pool.workspace = true
+sc-transaction-pool-api.default-features = true
+sc-transaction-pool-api.workspace = true
+serde_json = { features = ["std"], workspace = true }
+eagle-runtime.workspace = true
+sp-api.default-features = true
+sp-api.workspace = true
+sp-block-builder.default-features = true
+sp-block-builder.workspace = true
+sp-blockchain.default-features = true
+sp-blockchain.workspace = true
+sp-consensus.default-features = true
+sp-consensus.workspace = true
+sp-consensus-aura.default-features = true
+sp-consensus-aura.workspace = true
+sp-consensus-pow.default-features = true
+sp-consensus-pow.workspace = true
+sp-core.default-features = true
+sp-core.workspace = true
+sp-externalities = "=0.30.0"
+sp-genesis-builder.default-features = true
+sp-genesis-builder.workspace = true
+sp-inherents.default-features = true
+sp-inherents.workspace = true
+sp-io.default-features = true
+sp-io.workspace = true
+sp-keyring.default-features = true
+sp-keyring.workspace = true
+sp-runtime.default-features = true
+sp-runtime.workspace = true
+sp-timestamp.default-features = true
+sp-timestamp.workspace = true
+substrate-frame-rpc-system.default-features = true
+substrate-frame-rpc-system.workspace = true
+
+[build-dependencies]
+substrate-build-script-utils.default-features = true
+substrate-build-script-utils.workspace = true
+
+[dev-dependencies]
+pallet-balances.workspace = true
+
+[target.'cfg(not(windows))'.dependencies]
+frame-benchmarking-cli = { workspace = true, default-features = true }
+
+[features]
+incinerator-rehearsal = ["eagle-runtime/incinerator-rehearsal"]
+svy-boot3-cpu = ["svy-transfer-fee-candidate"]
+svy-boot3-rehearsal = ["svy-boot3-cpu"]
+svy-dead-mainnet-drill = ["svy-boot3-rehearsal"]
+svy-transfer-fee-candidate = ["svy-matrix-live", "eagle-runtime/svy-transfer-fee-candidate"]
+default = ["std"]
+gpu-pow-v2 = ["eagle-runtime/gpu-pow-v2"]
+gpu-pow-rewards-dev = ["gpu-pow-v2", "eagle-runtime/gpu-pow-rewards-dev"]
+gpu-pow-v3-rewards-dev = ["gpu-pow-rewards-dev", "eagle-runtime/gpu-pow-v3-rewards-dev"]
+gpu-pow-v3-block-rewards-dev = ["gpu-pow-v3-rewards-dev", "eagle-runtime/gpu-pow-v3-block-rewards-dev"]
+# Reuse height-based economics; main.rs selects matrix work for this isolated identity.
+gpu-pow-matrix-block-rewards-dev = ["gpu-pow-v3-block-rewards-dev", "eagle-runtime/gpu-pow-matrix-block-rewards-dev"]
+svy-matrix-live = ["gpu-pow-matrix-block-rewards-dev", "eagle-runtime/svy-matrix-live"]
+std = ["eagle-runtime/std"]
+# Dependencies that are only required if runtime benchmarking should be build.
+runtime-benchmarks = [
+	"frame-benchmarking-cli/runtime-benchmarks",
+	"frame-system/runtime-benchmarks",
+	"pallet-transaction-payment/runtime-benchmarks",
+	"sc-service/runtime-benchmarks",
+	"eagle-runtime/runtime-benchmarks",
+	"sp-runtime/runtime-benchmarks",
+]
+# Enable features that allow the runtime to be tried and debugged. Name might be subject to change
+# in the near future.
+try-runtime = [
+	"frame-system/try-runtime",
+	"pallet-transaction-payment/try-runtime",
+	"eagle-runtime/try-runtime",
+	"sp-runtime/try-runtime",
+]
+
+[[example]]
+name = "rc3-first-block"
+required-features = ["svy-transfer-fee-candidate"]

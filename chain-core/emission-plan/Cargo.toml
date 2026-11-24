@@ -1,0 +1,22 @@
+[package]
+name = "eagle-emission-plan"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.89"
+license.workspace = true
+
+[dependencies]
+
+[features]
+default = ["std"]
+std = []
+
+[dev-dependencies]
+codec = { workspace = true, features = ["std"] }
+frame-support = { workspace = true, features = ["std"] }
+frame-system = { workspace = true, features = ["std"] }
+scale-info = { workspace = true, features = ["std", "derive"] }
+pallet-balances = { workspace = true, features = ["std"] }
+pallet-sudo = { workspace = true, features = ["std"] }
+sp-io = { version = "=43.0.0" }
+sp-runtime = { version = "=44.0.0" }

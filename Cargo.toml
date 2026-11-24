@@ -1,0 +1,95 @@
+[workspace]
+resolver = "2"
+members = ["miner-client", "chain-core/pallets/pallet-ai-router", "chain-core/pallets/pallet-pow-rewards", "chain-core/node", "chain-core/runtime", "chain-core/emission-plan", "chain-core/pallets/pallet-ai-reserve"]
+default-members = ["miner-client", "chain-core/pallets/pallet-ai-router"]
+
+[workspace.package]
+license = "Unlicense"
+authors = ["Eagle AI Network"]
+homepage = "https://github.com/paritytech/polkadot-sdk"
+repository = "https://github.com/paritytech/polkadot-sdk"
+edition = "2021"
+
+[workspace.dependencies]
+async-trait = "0.1.88"
+eagle-runtime = { path = "chain-core/runtime", default-features = false }
+pallet-ai-router = { path = "chain-core/pallets/pallet-ai-router", default-features = false }
+pallet-pow-rewards = { path = "chain-core/pallets/pallet-pow-rewards", default-features = false }
+clap = { version = "4.5.13" }
+codec = { version = "3.7.5", default-features = false, package = "parity-scale-codec" }
+frame-benchmarking = { default-features = false, version = "=43.0.1" }
+frame-benchmarking-cli = { default-features = false, version = "=51.0.0" }
+frame-executive = { default-features = false, version = "=43.0.1" }
+frame-metadata-hash-extension = { default-features = false, version = "=0.11.0" }
+frame-support = { default-features = false, version = "=43.0.2" }
+frame-system = { default-features = false, version = "=43.0.1" }
+frame-system-benchmarking = { default-features = false, version = "=43.0.0" }
+frame-system-rpc-runtime-api = { default-features = false, version = "=39.0.0" }
+frame-try-runtime = { default-features = false, version = "=0.49.0" }
+futures = { version = "0.3.31" }
+jsonrpsee = { version = "0.24.3" }
+pallet-aura = { default-features = false, version = "=42.0.0" }
+pallet-balances = { default-features = false, version = "=44.0.0" }
+pallet-grandpa = { default-features = false, version = "=43.0.0" }
+pallet-sudo = { default-features = false, version = "=43.0.0" }
+pallet-timestamp = { default-features = false, version = "=42.0.0" }
+pallet-transaction-payment = { default-features = false, version = "=43.0.0" }
+pallet-transaction-payment-rpc = { default-features = false, version = "=46.0.0" }
+pallet-transaction-payment-rpc-runtime-api = { default-features = false, version = "=43.0.0" }
+sc-basic-authorship = { default-features = false, version = "=0.52.0" }
+sc-cli = { default-features = false, version = "=0.55.0" }
+sc-client-api = { default-features = false, version = "=42.0.0" }
+sc-consensus = { default-features = false, version = "=0.52.0" }
+sc-consensus-aura = { default-features = false, version = "=0.53.1" }
+sc-consensus-grandpa = { default-features = false, version = "=0.38.1" }
+sc-consensus-pow = { version = "=0.52.0" }
+sc-executor = { default-features = false, version = "=0.45.0" }
+sc-network = { default-features = false, version = "=0.53.1" }
+sc-offchain = { default-features = false, version = "=48.0.0" }
+sc-service = { default-features = false, version = "=0.54.0" }
+sc-telemetry = { default-features = false, version = "=30.0.0" }
+sc-transaction-pool = { default-features = false, version = "=42.0.0" }
+sc-transaction-pool-api = { default-features = false, version = "=42.0.0" }
+scale-info = { version = "2.11.6", default-features = false }
+serde_json = { version = "1.0.132", default-features = false }
+sp-api = { default-features = false, version = "=39.0.0" }
+sp-block-builder = { default-features = false, version = "=39.0.0" }
+sp-blockchain = { default-features = false, version = "=42.0.0" }
+sp-consensus = { default-features = false, version = "=0.45.0" }
+sp-consensus-aura = { default-features = false, version = "=0.45.0" }
+sp-consensus-grandpa = { default-features = false, version = "=26.0.0" }
+sp-consensus-pow = { default-features = false, version = "=0.45.0" }
+sp-core = { default-features = false, version = "=38.1.0" }
+sp-genesis-builder = { default-features = false, version = "=0.20.0" }
+sp-inherents = { default-features = false, version = "=39.0.0" }
+sp-io = { default-features = false, version = "=43.0.0" }
+sp-keyring = { default-features = false, version = "=44.0.0" }
+sp-offchain = { default-features = false, version = "=39.0.0" }
+sp-runtime = { default-features = false, version = "=44.0.0" }
+sp-session = { default-features = false, version = "=41.0.0" }
+sp-storage = { default-features = false, version = "=22.0.0" }
+sp-timestamp = { default-features = false, version = "=39.0.0" }
+sp-transaction-pool = { default-features = false, version = "=39.0.0" }
+sp-version = { default-features = false, version = "=42.0.0" }
+substrate-build-script-utils = { default-features = false, version = "=11.0.0" }
+substrate-frame-rpc-system = { default-features = false, version = "=47.0.0" }
+substrate-wasm-builder = { default-features = false, version = "=29.0.1" }
+
+[profile.release]
+opt-level = 3
+panic = "unwind"
+debug = 0
+
+[profile.dev]
+debug = 0
+
+[profile.production]
+inherits = "release"
+lto = "thin"
+codegen-units = 1
+
+[patch.crates-io]
+# The upstream 0.52.0 mining handle validates one proposal and can then take a
+# newer proposal. This isolated copy adds version-bound atomic submission so a
+# stale GPU result cannot consume or import the replacement build.
+sc-consensus-pow = { path = "chain-core/vendor/sc-consensus-pow" }

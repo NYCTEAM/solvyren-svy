@@ -1,0 +1,5 @@
+* text=auto
+network/mainnet.raw.json -text
+*.wasm binary
+*.rs text eol=lf
+*.toml text eol=lf

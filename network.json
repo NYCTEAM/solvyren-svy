@@ -1,0 +1,14 @@
+{
+  "id": "solvyren-svy",
+  "symbol": "SVY",
+  "decimals": 12,
+  "genesisHash": "0x678107bc4d21a4e7f9b12ee817af0c93f074cf04fbd7ee716976af42ca92f4c8",
+  "rawSpecSha256": "669568cfc22ef92da64eae6ae15b3116107f9ee58b751cd1cb886ec98291cc16",
+  "bootNodes": [
+    "/dns4/boot1.solvyren.com/tcp/30343/p2p/12D3KooWE3Vc221FEKdy2QuM3HGG9kwDHW17NApBCbrwZCASMxXR",
+    "/dns4/boot2.solvyren.com/tcp/30343/p2p/12D3KooWEzpseawXDTCH7Pbd9sUsj6AdtgBehhSpjRz4oSCm6N26",
+    "/dns4/boot3.solvyren.com/tcp/30343/p2p/12D3KooWKBcH7DvCCkNAmjTMo4dB9dne1EuEBQrRMhBvFvrmHCjn"
+  ],
+  "explorer": "https://scan.solvyren.com",
+  "website": "https://solvyren.com"
+}
