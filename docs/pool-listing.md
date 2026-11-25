@@ -28,7 +28,7 @@
 
 ## Linux x86-64 自定义矿工
 
-平台支持运行自定义 Linux 程序时，在模板中配置[官方 AMD / NVIDIA 多卡预览包 1.2.2](https://solvyren.com/downloads/smw/Solvyren-SMW-1.2.2-Linux-x64-MultiGPU-Preview.tar.gz)，用[官方 SHA-256 清单](https://solvyren.com/downloads/smw/SHA256SUMS)校验后解压。按下载页准备驱动和 Python 依赖，并在矿机系统中设置显卡功耗上限。
+平台支持运行自定义 Linux 程序时，在模板中配置[官方 AMD / NVIDIA 多卡预览包 1.2.3](https://solvyren.com/downloads/smw/Solvyren-SMW-1.2.3-Linux-x64-MultiGPU-Preview.tar.gz)，用[官方 SHA-256 清单](https://solvyren.com/downloads/smw/SHA256SUMS)校验后解压。按下载页准备驱动和 Python 依赖，并在矿机系统中设置显卡功耗上限。
 
 工作目录设为解压后的 `solvyren-smw`。把下例的钱包和矿工名变量映射到平台字段，并将各值作为独立参数传递：
 
@@ -36,7 +36,7 @@
 ./start-rig.py --pool tls://pool.solvyren.com:18444 --wallet "$SVY_WALLET" --worker "$WORKER_NAME"
 ```
 
-平台可预填统一入口，用户填写自己的收款地址和矿工名。请勿预填运营方钱包。HiveOS Custom Miner 的 Miner name 为 `solvyren-smw`，Installation URL 使用 [HiveOS 1.2.2 安装包](https://solvyren.com/downloads/smw/solvyren-smw-1.2.2.tar.gz)，Pool URL 设为 `tls://pool.solvyren.com:18444`。
+Linux / HiveOS 1.2.3 和 Windows NVIDIA 1.3.1 默认连接统一矿池。平台可预填统一入口，用户填写自己的收款地址和矿工名。请勿预填运营方钱包。HiveOS Custom Miner 的 Miner name 为 `solvyren-smw`，Installation URL 使用 [HiveOS 1.2.3 安装包](https://solvyren.com/downloads/smw/solvyren-smw-1.2.3.tar.gz)，Pool URL 设为 `tls://pool.solvyren.com:18444`。
 
 ## 接入验收
 
