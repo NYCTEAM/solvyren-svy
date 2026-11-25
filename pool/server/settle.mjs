@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS splits(height INTEGER,wallet TEXT,gross TEXT,net TEXT
 CREATE TABLE IF NOT EXISTS balances(wallet TEXT PRIMARY KEY,atoms TEXT NOT NULL);
 CREATE TABLE IF NOT EXISTS payments(hash TEXT PRIMARY KEY,wallet TEXT NOT NULL,atoms TEXT NOT NULL,signed TEXT NOT NULL,height INTEGER);
 CREATE UNIQUE INDEX IF NOT EXISTS one_pending ON payments((1)) WHERE height IS NULL;`);
+db.exec('CREATE INDEX IF NOT EXISTS paid_wallet_height ON payments(wallet,height)');
 const policy=JSON.stringify([genesis,owner,operator,cfg.startHeight,cfg.feeBps]);
 db.prepare('INSERT OR IGNORE INTO policy VALUES(1,?)').run(policy);
 if(db.prepare('SELECT value FROM policy').get().value!==policy)throw Error('Existing ledger policy differs');
@@ -93,7 +94,8 @@ async function payout(){
   if(!signer)return;
   let pending=db.prepare('SELECT * FROM payments WHERE height IS NULL').get();
   if(!pending){
-    const due=db.prepare('SELECT * FROM balances WHERE wallet<>? ORDER BY wallet').all(owner)
+    const due=db.prepare(`SELECT b.* FROM balances b WHERE b.wallet<>?
+      ORDER BY (SELECT MAX(p.height) FROM payments p WHERE p.wallet=b.wallet),b.wallet`).all(owner)
       .find(row=>BigInt(row.atoms)>=1000000000000n);
     if(!due)return;
     const tx=api.tx.balances.transferKeepAlive(due.wallet,due.atoms);
