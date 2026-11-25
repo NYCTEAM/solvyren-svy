@@ -11,7 +11,7 @@ use sc_telemetry::{Telemetry, TelemetryWorker};
 use sc_transaction_pool_api::OffchainTransactionPoolFactory;
 #[cfg(not(feature = "gpu-pow-v2"))]
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
-#[cfg(feature = "gpu-pow-v2")]
+#[cfg(all(feature = "gpu-pow-v2", not(feature = "mainnet-release")))]
 use std::time::Instant;
 use std::{sync::Arc, time::Duration};
 
@@ -86,7 +86,7 @@ fn validate_chain_mode(id: &str) -> Result<(), ServiceError> {
     Ok(())
 }
 
-#[cfg(feature = "gpu-pow-v2")]
+#[cfg(all(feature = "gpu-pow-v2", not(feature = "mainnet-release")))]
 fn pow_finality_only_from_environment() -> Result<bool, ServiceError> {
     match std::env::var_os("EAGW_POW_FINALITY_ONLY") {
         None => Ok(false),
@@ -97,7 +97,7 @@ fn pow_finality_only_from_environment() -> Result<bool, ServiceError> {
     }
 }
 
-#[cfg(feature = "gpu-pow-v2")]
+#[cfg(all(feature = "gpu-pow-v2", not(feature = "mainnet-release")))]
 #[derive(Clone, Copy)]
 struct PowAuthoringBudget {
     import_limit: u64,
@@ -105,7 +105,7 @@ struct PowAuthoringBudget {
     max_duration: Duration,
 }
 
-#[cfg(feature = "gpu-pow-v2")]
+#[cfg(all(feature = "gpu-pow-v2", not(feature = "mainnet-release")))]
 fn pow_authoring_budget_from_environment() -> Result<PowAuthoringBudget, ServiceError> {
     let value = std::env::var_os("EAGW_POW_AUTHORING_LIMIT").ok_or_else(|| {
         ServiceError::Other("GPU PoW author requires EAGW_POW_AUTHORING_LIMIT".into())
@@ -399,6 +399,7 @@ pub fn new_full<
     // reserving the host-wide GPU owner. `new_partial` repeats this check so
     // callers that only construct partial components keep the same boundary.
     validate_chain_mode(config.chain_spec.id())?;
+    #[cfg(not(feature = "mainnet-release"))]
     if crate::chain_spec::is_mx10_isolated_id(config.chain_spec.id()) && gpu_pow_author {
         return Err(ServiceError::Other("MX10 test chain has verification/import only; V2 GPU authoring is disabled".into()));
     }
@@ -413,7 +414,7 @@ pub fn new_full<
             "--gpu-pow-author requires a gpu-pow-v2 build and pow-local chain".into(),
         ));
     }
-    #[cfg(feature = "gpu-pow-v2")]
+    #[cfg(all(feature = "gpu-pow-v2", not(feature = "mainnet-release")))]
     let _pow_finality_only = {
         let enabled = pow_finality_only_from_environment()?;
         if enabled && (!config.role.is_authority() || config.disable_grandpa) {
@@ -428,7 +429,7 @@ pub fn new_full<
         }
         enabled
     };
-    #[cfg(feature = "gpu-pow-v2")]
+    #[cfg(all(feature = "gpu-pow-v2", not(feature = "mainnet-release")))]
     let cpu_beneficiary = {
         #[cfg(feature = "svy-boot3-cpu")]
         {
@@ -449,7 +450,7 @@ pub fn new_full<
         #[cfg(not(feature = "svy-boot3-cpu"))]
         { None::<Vec<u8>> }
     };
-    #[cfg(feature = "gpu-pow-v2")]
+    #[cfg(all(feature = "gpu-pow-v2", not(feature = "mainnet-release")))]
     let pow_authoring = if gpu_pow_author {
         #[cfg(not(feature = "svy-matrix-live"))]
         use sp_core::crypto::Ss58Codec;
@@ -482,7 +483,7 @@ pub fn new_full<
         transaction_pool,
         other: (block_import, grandpa_link, mut telemetry),
     } = new_partial(&config)?;
-    #[cfg(feature = "gpu-pow-v2")]
+    #[cfg(all(feature = "gpu-pow-v2", not(feature = "mainnet-release")))]
     if let Some((budget, runner, _)) = &pow_authoring {
         runner
             .reserve_authoring_session(
@@ -523,7 +524,7 @@ pub fn new_full<
     ));
 
     // Copy the SAME BasicQueue ingress before build_network takes the queue.
-    #[cfg(feature = "gpu-pow-matrix-block-rewards-dev")]
+    #[cfg(all(feature = "gpu-pow-matrix-block-rewards-dev", not(feature = "mainnet-release")))]
     let mx10_import_queue = Arc::new(std::sync::Mutex::new(
         sc_consensus::import_queue::ImportQueue::service(&import_queue),
     ));
@@ -576,19 +577,19 @@ pub fn new_full<
 
     // Expose proposal-building only for the pinned isolated MX10 spec and
     // explicit IPv4 localhost endpoints. Never register it on V2/Live/public RPC.
-    #[cfg(feature = "gpu-pow-matrix-block-rewards-dev")]
+    #[cfg(all(feature = "gpu-pow-matrix-block-rewards-dev", not(feature = "mainnet-release")))]
     let mx10_rpc_context = match crate::gpu_pow_consensus::WorkAlgorithm::from_spec(config.chain_spec.as_ref()).map_err(ServiceError::Other)? {
         crate::gpu_pow_consensus::WorkAlgorithm::Mx10N16(context) => Some(context),
         _ => None,
     };
-    #[cfg(feature = "gpu-pow-matrix-block-rewards-dev")]
+    #[cfg(all(feature = "gpu-pow-matrix-block-rewards-dev", not(feature = "mainnet-release")))]
     let mx10_template_rpc = mx10_rpc_context.is_some()
         && config.rpc.addr.as_ref().is_some_and(|endpoints| !endpoints.is_empty()
             && endpoints.iter().all(|endpoint| endpoint.listen_addr.ip()
                 == std::net::IpAddr::V4(std::net::Ipv4Addr::LOCALHOST)));
 
     let rpc_extensions_builder = {
-        #[cfg(feature = "gpu-pow-matrix-block-rewards-dev")]
+        #[cfg(all(feature = "gpu-pow-matrix-block-rewards-dev", not(feature = "mainnet-release")))]
         let mx10_import_queue = mx10_import_queue.clone();
         let client = client.clone();
         let pool = transaction_pool.clone();
@@ -598,8 +599,10 @@ pub fn new_full<
                 client: client.clone(),
                 pool: pool.clone(),
             };
-            let mut module = crate::rpc::create_full(deps)?;
-            #[cfg(feature = "gpu-pow-matrix-block-rewards-dev")]
+            let module = crate::rpc::create_full(deps)?;
+            #[cfg(all(feature = "gpu-pow-matrix-block-rewards-dev", not(feature = "mainnet-release")))]
+            let mut module = module;
+            #[cfg(all(feature = "gpu-pow-matrix-block-rewards-dev", not(feature = "mainnet-release")))]
             if mx10_template_rpc {
                 let context = mx10_rpc_context.expect("checked isolated RPC context");
                 crate::rpc::register_mx10_template(&mut module, client.clone(), pool.clone(), context)?;
@@ -685,7 +688,7 @@ pub fn new_full<
             .spawn_blocking("aura", Some("block-authoring"), aura);
     }
 
-    #[cfg(feature = "gpu-pow-v2")]
+    #[cfg(all(feature = "gpu-pow-v2", not(feature = "mainnet-release")))]
     if let Some(beneficiary) = pow_authoring.as_ref().map(|(_, _, b)| b.clone()).or(cpu_beneficiary) {
         let genesis = client
             .block_hash(0)
@@ -1027,6 +1030,6 @@ pub fn new_full<
 }
 
 // Separate bounded offline author entry; no V2 authoring reinterpretation.
-#[cfg(feature = "gpu-pow-matrix-block-rewards-dev")]
+#[cfg(all(feature = "gpu-pow-matrix-block-rewards-dev", not(feature = "mainnet-release")))]
 #[path = "mx10_author.rs"]
 pub(crate) mod mx10_author;

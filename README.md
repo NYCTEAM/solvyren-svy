@@ -64,10 +64,10 @@ chain specification. Leave the local RPC listener on loopback.
 允许出站 TCP 30343 以连接引导节点。若向其他节点提供入站连接，在防火墙及云安全组
 放行入站 TCP 30333。节点本机的 RPC 保持在回环地址。
 
-BOOT1 retains full historical state and blocks with `--state-pruning archive`
-and `--blocks-pruning archive`. BOOT2 is the primary bootstrap and backup RPC
-node. BOOT3 is a pruned fallback bootstrap node on TCP 30343 and exposes no
-public RPC.
+BOOT1 runs a dedicated archive service with `--state-pruning archive` and
+`--blocks-pruning archive`. Its public P2P bootstrap process prunes state
+independently. BOOT2 is the primary bootstrap and backup RPC node. BOOT3
+is a pruned fallback bootstrap node on TCP 30343 and exposes no public RPC.
 To keep BOOT2 as a persistent peer, append the option below. The other public
 peers can still be discovered.
 

@@ -1,7 +1,7 @@
 [package]
-name = "eagle-node"
-description = "A solochain node template built with Substrate, part of Polkadot Sdk."
-version = "0.1.0"
+name = "solvyren-node"
+description = "Solvyren SVY mainnet node"
+version = "0.1.1"
 license = "Unlicense"
 authors.workspace = true
 homepage.workspace = true
@@ -80,8 +80,7 @@ sp-inherents.default-features = true
 sp-inherents.workspace = true
 sp-io.default-features = true
 sp-io.workspace = true
-sp-keyring.default-features = true
-sp-keyring.workspace = true
+sp-keyring = { workspace = true, default-features = true, optional = true }
 sp-runtime.default-features = true
 sp-runtime.workspace = true
 sp-timestamp.default-features = true
@@ -94,10 +93,11 @@ substrate-build-script-utils.default-features = true
 substrate-build-script-utils.workspace = true
 
 [dev-dependencies]
+sp-keyring = { workspace = true, default-features = true }
 pallet-balances.workspace = true
 
 [target.'cfg(not(windows))'.dependencies]
-frame-benchmarking-cli = { workspace = true, default-features = true }
+frame-benchmarking-cli = { workspace = true, default-features = true, optional = true }
 
 [features]
 incinerator-rehearsal = ["eagle-runtime/incinerator-rehearsal"]
@@ -105,7 +105,9 @@ svy-boot3-cpu = ["svy-transfer-fee-candidate"]
 svy-boot3-rehearsal = ["svy-boot3-cpu"]
 svy-dead-mainnet-drill = ["svy-boot3-rehearsal"]
 svy-transfer-fee-candidate = ["svy-matrix-live", "eagle-runtime/svy-transfer-fee-candidate"]
-default = ["std"]
+default = ["std", "development-cli"]
+development-cli = ["dep:sp-keyring", "dep:frame-benchmarking-cli", "eagle-runtime/development-presets"]
+mainnet-release = ["std", "svy-transfer-fee-candidate"]
 gpu-pow-v2 = ["eagle-runtime/gpu-pow-v2"]
 gpu-pow-rewards-dev = ["gpu-pow-v2", "eagle-runtime/gpu-pow-rewards-dev"]
 gpu-pow-v3-rewards-dev = ["gpu-pow-rewards-dev", "eagle-runtime/gpu-pow-v3-rewards-dev"]
@@ -116,6 +118,7 @@ svy-matrix-live = ["gpu-pow-matrix-block-rewards-dev", "eagle-runtime/svy-matrix
 std = ["eagle-runtime/std"]
 # Dependencies that are only required if runtime benchmarking should be build.
 runtime-benchmarks = [
+    "development-cli",
 	"frame-benchmarking-cli/runtime-benchmarks",
 	"frame-system/runtime-benchmarks",
 	"pallet-transaction-payment/runtime-benchmarks",

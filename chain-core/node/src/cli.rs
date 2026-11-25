@@ -8,25 +8,31 @@ pub struct Cli {
 
     /// Run the independent, bounded offline MX10 isolated-chain author, then exit.
     /// Does not start a network node or reuse --gpu-pow-author.
+    #[cfg(not(feature = "mainnet-release"))]
     #[arg(long)]
     pub mx10_author: bool,
     /// Number of consecutive blocks to author in this isolated session (1..=8).
+    #[cfg(not(feature = "mainnet-release"))]
     #[arg(long, default_value_t = 4)]
     pub mx10_author_blocks: u32,
     /// MX10 compute backend: auto prefers the unchanged CUDA kernel, cpu is explicit.
+    #[cfg(not(feature = "mainnet-release"))]
     #[arg(long, default_value = "auto", value_parser = ["auto", "gpu", "cpu"])]
     pub mx10_author_backend: String,
     /// New, non-existing session-output directory; required by --mx10-author.
+    #[cfg(not(feature = "mainnet-release"))]
     #[arg(long)]
     pub mx10_author_output: Option<std::path::PathBuf>,
 
     /// Enable the bounded local GPU PoW author on this node without granting
     /// it GRANDPA voting authority. Only available in gpu-pow-v2 builds.
+    #[cfg(not(feature = "mainnet-release"))]
     #[arg(long)]
     pub gpu_pow_author: bool,
 
     /// Reward address committed into locally authored PoW blocks (SVY-prefixed on SVY Live).
     /// Required with --gpu-pow-author and forbidden without it.
+    #[cfg(not(feature = "mainnet-release"))]
     #[arg(long, value_name = "ADDRESS")]
     pub gpu_pow_beneficiary: Option<String>,
 }
@@ -68,7 +74,7 @@ pub enum Subcommand {
     Revert(sc_cli::RevertCmd),
 
     /// Sub-commands concerned with benchmarking.
-    #[cfg(not(windows))]
+    #[cfg(all(not(windows), feature = "development-cli"))]
     #[command(subcommand)]
     Benchmark(frame_benchmarking_cli::BenchmarkCmd),
 

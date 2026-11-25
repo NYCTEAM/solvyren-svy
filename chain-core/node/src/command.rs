@@ -1,14 +1,14 @@
 use crate::{chain_spec, cli::{Cli, Subcommand}, service};
-#[cfg(not(windows))]
+#[cfg(all(not(windows), feature = "development-cli"))]
 use crate::benchmarking::{inherent_benchmark_data, RemarkBuilder, TransferKeepAliveBuilder};
 use eagle_runtime::Block;
-#[cfg(not(windows))]
+#[cfg(all(not(windows), feature = "development-cli"))]
 use eagle_runtime::EXISTENTIAL_DEPOSIT;
-#[cfg(not(windows))]
+#[cfg(all(not(windows), feature = "development-cli"))]
 use frame_benchmarking_cli::{BenchmarkCmd, ExtrinsicFactory, SUBSTRATE_REFERENCE_HARDWARE};
 use sc_cli::SubstrateCli;
 use sc_service::PartialComponents;
-#[cfg(not(windows))]
+#[cfg(all(not(windows), feature = "development-cli"))]
 use sp_keyring::Sr25519Keyring;
 
 impl SubstrateCli for Cli {
@@ -82,9 +82,18 @@ impl SubstrateCli for Cli {
 /// Parse and run command line arguments
 pub fn run() -> sc_cli::Result<()> {
     let cli = Cli::from_args();
-    let gpu_pow_author = cli.gpu_pow_author;
-    let gpu_pow_beneficiary = cli.gpu_pow_beneficiary.clone();
+    #[cfg(feature = "mainnet-release")]
+    if cli.run.shared_params.dev || cli.run.get_keyring().is_some() {
+        return Err(sc_cli::Error::Input(
+            "Development identities are unavailable in the Solvyren mainnet release".into(),
+        ));
+    }
+    #[cfg(not(feature = "mainnet-release"))]
+    let (gpu_pow_author, gpu_pow_beneficiary) = (cli.gpu_pow_author, cli.gpu_pow_beneficiary.clone());
+    #[cfg(feature = "mainnet-release")]
+    let (gpu_pow_author, gpu_pow_beneficiary) = (false, None);
 
+    #[cfg(not(feature = "mainnet-release"))]
     if cli.mx10_author {
         if cli.subcommand.is_some() || gpu_pow_author || gpu_pow_beneficiary.is_some() {
             return Err(sc_cli::Error::Input("--mx10-author cannot be combined with subcommands or V2 GPU authoring".into()));
@@ -177,7 +186,7 @@ pub fn run() -> sc_cli::Result<()> {
                 Ok((cmd.run(client, backend, Some(aux_revert)), task_manager))
             })
         }
-        #[cfg(not(windows))]
+        #[cfg(all(not(windows), feature = "development-cli"))]
         Some(Subcommand::Benchmark(cmd)) => {
             let runner = cli.create_runner(cmd)?;
 

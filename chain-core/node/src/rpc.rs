@@ -60,11 +60,11 @@ where
 }
 
 // Only new_full registers this method with its actual live client.
-#[cfg(feature = "gpu-pow-matrix-block-rewards-dev")]
+#[cfg(all(feature = "gpu-pow-matrix-block-rewards-dev", not(feature = "mainnet-release")))]
 #[path = "mx10_template.rs"]
 mod mx10_template;
 
-#[cfg(feature = "gpu-pow-matrix-block-rewards-dev")]
+#[cfg(all(feature = "gpu-pow-matrix-block-rewards-dev", not(feature = "mainnet-release")))]
 pub(crate) fn register_mx10_template(
     module: &mut RpcModule<()>, client: Arc<crate::service::FullClient>,
     pool: Arc<sc_transaction_pool::TransactionPoolHandle<Block, crate::service::FullClient>>,
@@ -73,11 +73,11 @@ pub(crate) fn register_mx10_template(
     mx10_template::register(module, client, pool, context)
 }
 
-#[cfg(feature = "gpu-pow-matrix-block-rewards-dev")]
+#[cfg(all(feature = "gpu-pow-matrix-block-rewards-dev", not(feature = "mainnet-release")))]
 #[path = "mx10_import.rs"]
 mod mx10_import;
 
-#[cfg(feature = "gpu-pow-matrix-block-rewards-dev")]
+#[cfg(all(feature = "gpu-pow-matrix-block-rewards-dev", not(feature = "mainnet-release")))]
 pub(crate) fn register_mx10_import(
  module: &mut RpcModule<()>, client: Arc<crate::service::FullClient>,
  queue: Arc<std::sync::Mutex<Box<dyn sc_consensus::import_queue::ImportQueueService<Block>>>>,

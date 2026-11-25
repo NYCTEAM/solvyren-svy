@@ -23,6 +23,12 @@ use std::{future::Future, pin::Pin, sync::Arc};
 pub(crate) enum WorkAlgorithm { V2, Mx10N16(crate::mx10_context::Mx10ChainContext) }
 
 impl WorkAlgorithm {
+    #[cfg(feature = "mainnet-release")]
+    pub(crate) fn from_spec(_: &dyn sc_service::ChainSpec) -> Result<Self, String> {
+        Ok(Self::V2)
+    }
+
+    #[cfg(not(feature = "mainnet-release"))]
     pub(crate) fn from_spec(spec: &dyn sc_service::ChainSpec) -> Result<Self, String> {
         let properties = spec.properties();
         let work = properties.get("workAlgorithm").and_then(|v| v.as_str());
@@ -41,6 +47,9 @@ impl WorkAlgorithm {
     pub(crate) fn verify(self, genesis: H256, pre_hash: H256, seal: &[u8], target: [u8; 32]) -> bool {
         match self {
             Self::V2 => gpu_pow::verify_pre_hash(genesis, pre_hash, seal, target).is_ok(),
+            #[cfg(feature = "mainnet-release")]
+            Self::Mx10N16(_) => false,
+            #[cfg(not(feature = "mainnet-release"))]
             Self::Mx10N16(context) => {
                 if context.ensure_genesis(genesis).is_err() { return false; }
                 let start = std::time::Instant::now();
@@ -290,6 +299,7 @@ impl<C: DifficultyChain> DynamicDifficultyAlgorithm<C> {
             .ok_or_else(|| Error::Other("PoW block number overflow".into()))?;
         // Fork choice also constructs this algorithm without work dispatch.
         // Difficulty is bound to genesis on every path, including that path.
+        #[cfg(not(feature = "mainnet-release"))]
         if self.genesis == crate::mx10_context::PUBLICDEV_GENESIS.parse::<H256>().expect("pinned genesis") {
             if next_number >= crate::adaptive_difficulty::ACTIVATION_HEIGHT {
                 return crate::adaptive_difficulty::difficulty(self.client.as_ref(), parent);

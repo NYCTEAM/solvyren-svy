@@ -1,16 +1,18 @@
 //! Substrate Node Template CLI library.
 #![warn(missing_docs)]
 
-#[cfg(not(windows))]
+#[cfg(all(not(windows), feature = "development-cli"))]
 mod benchmarking;
 mod chain_spec;
 mod cli;
 mod command;
+#[cfg(not(feature = "gpu-pow-v2"))]
 mod eagw_work_provider;
 pub mod gpu_pow;
 mod gpu_pow_mx10;
 mod smw_activation;
 mod mx10_context;
+#[cfg(any(test, not(feature = "mainnet-release")))]
 mod gpu_pow_mx10_gpu;
 pub mod gpu_pow_consensus;
 mod adaptive_difficulty;

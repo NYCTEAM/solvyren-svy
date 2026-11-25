@@ -56,10 +56,24 @@ pub fn load_svy_live_spec(path: &str) -> Result<ChainSpec, String> {
     {
         return Err("SVY native units and matrix work profile required".into());
     }
-    let wasm = WASM_BINARY.ok_or("Live Runtime Wasm unavailable")?;
-    let code = format!("0x{}", hex(wasm));
-    if raw["genesis"]["raw"]["top"]["0x3a636f6465"].as_str() != Some(code.as_str()) {
-        return Err("Live genesis Wasm differs from embedded Runtime".into());
+    let code = raw["genesis"]["raw"]["top"]["0x3a636f6465"]
+        .as_str()
+        .ok_or("Live genesis Runtime Wasm unavailable")?;
+    #[cfg(feature = "mainnet-release")]
+    {
+        // This is the SHA-256 of the canonical hex code value in the pinned spec.
+        // The full node executes the original Wasm from that spec and chain state.
+        const EXPECTED_CODE_SHA256: &str = "c802b0b3d59c2f63e25a8aa2e97c6525748ca88a7f96446946cf20a5f0d9a19c";
+        if hex(&sp_core::hashing::sha2_256(code.as_bytes())) != EXPECTED_CODE_SHA256 {
+            return Err("Live genesis Runtime Wasm fingerprint mismatch".into());
+        }
+    }
+    #[cfg(not(feature = "mainnet-release"))]
+    {
+        let wasm = WASM_BINARY.ok_or("Live Runtime Wasm unavailable")?;
+        if code != format!("0x{}", hex(wasm)) {
+            return Err("Live genesis Wasm differs from embedded Runtime".into());
+        }
     }
     ChainSpec::from_json_bytes(bytes)
 }

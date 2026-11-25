@@ -5,9 +5,9 @@ default-members = ["miner-client", "chain-core/pallets/pallet-ai-router"]
 
 [workspace.package]
 license = "Unlicense"
-authors = ["Eagle AI Network"]
-homepage = "https://github.com/paritytech/polkadot-sdk"
-repository = "https://github.com/paritytech/polkadot-sdk"
+authors = ["Solvyren"]
+homepage = "https://solvyren.com"
+repository = "https://github.com/NYCTEAM/solvyren-svy"
 edition = "2021"
 
 [workspace.dependencies]

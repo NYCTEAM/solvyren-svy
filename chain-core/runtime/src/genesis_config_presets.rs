@@ -24,9 +24,11 @@ use serde_json::Value;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
 use sp_consensus_grandpa::AuthorityId as GrandpaId;
 use sp_genesis_builder::{self, PresetId};
+#[cfg(feature = "development-presets")]
 use sp_keyring::Sr25519Keyring;
 
 // Returns the genesis config presets populated with given parameters.
+#[cfg(feature = "development-presets")]
 fn testnet_genesis(
     initial_authorities: Vec<(AuraId, GrandpaId)>,
     endowed_accounts: Vec<AccountId>,
@@ -115,6 +117,7 @@ fn testnet_genesis(
 }
 
 /// Return the development genesis config.
+#[cfg(feature = "development-presets")]
 pub fn development_config_genesis() -> Value {
     testnet_genesis(
         vec![(
@@ -132,6 +135,7 @@ pub fn development_config_genesis() -> Value {
 }
 
 /// Return the local genesis config preset.
+#[cfg(feature = "development-presets")]
 pub fn local_config_genesis() -> Value {
     testnet_genesis(
         vec![
@@ -153,7 +157,7 @@ pub fn local_config_genesis() -> Value {
 }
 
 /// Provides the JSON representation of predefined genesis config for given `id`.
-#[cfg(not(feature = "svy-matrix-live"))]
+#[cfg(all(not(feature = "svy-matrix-live"), feature = "development-presets"))]
 pub fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
     let patch = match id.as_ref() {
         sp_genesis_builder::DEV_RUNTIME_PRESET => development_config_genesis(),
@@ -168,7 +172,7 @@ pub fn get_preset(id: &PresetId) -> Option<Vec<u8>> {
 }
 
 /// List of supported presets.
-#[cfg(not(feature = "svy-matrix-live"))]
+#[cfg(all(not(feature = "svy-matrix-live"), feature = "development-presets"))]
 pub fn preset_names() -> Vec<PresetId> {
     vec![
         PresetId::from(sp_genesis_builder::DEV_RUNTIME_PRESET),
@@ -176,12 +180,12 @@ pub fn preset_names() -> Vec<PresetId> {
     ]
 }
 
-#[cfg(feature = "svy-matrix-live")]
+#[cfg(any(feature = "svy-matrix-live", not(feature = "development-presets")))]
 pub fn get_preset(_: &PresetId) -> Option<Vec<u8>> {
     None
 }
 
-#[cfg(feature = "svy-matrix-live")]
+#[cfg(any(feature = "svy-matrix-live", not(feature = "development-presets")))]
 pub fn preset_names() -> Vec<PresetId> {
     Vec::new()
 }

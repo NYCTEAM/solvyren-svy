@@ -350,7 +350,7 @@ fn phase7_release_import_path_v2_2x16() {
     fs::create_dir_all(root.join("node-data")).unwrap();
 
     let how = "T_verify/reject: Instant around FixedTargetAlgorithm::verify (PowAlgorithm::verify), which is the seal check PowBlockImport::import_block performs on the release eagle-node import queue built by service::new_partial under --features gpu-pow-matrix-block-rewards-dev. (PowVerifier alone only runs preliminary_verify and is NOT the recomputation gate.) Smoke: release eagle-node started on pow-matrix-block-rewards-local bound to 127.0.0.1 (see logs/node-smoke.log). Flood: rapid PowAlgorithm::verify submits + import-blocks CLI help/presence on the same binary. Challenge always challenge_from_pre_hash(genesis, pre_hash). proxy=false notNodeImportQueue=false for flood metadata.";
-    let start_cmd = "cargo test --release -p eagle-node --features gpu-pow-matrix-block-rewards-dev phase7_release_import_path_v2_2x16 -- --ignored --nocapture";
+    let start_cmd = "cargo test --release -p solvyren-node --features gpu-pow-matrix-block-rewards-dev phase7_release_import_path_v2_2x16 -- --ignored --nocapture";
     let node_started = fs::read_to_string(root.join("logs/node-smoke.log"))
         .map(|s| s.contains("Solvyren Experimental Matrix Block Rewards Local") && s.contains("Highest known block at #0"))
         .unwrap_or(false);
@@ -1261,7 +1261,7 @@ mod import_queue_supplement {
 
         let env = serde_json::json!({
             "test": TEST_NAME,
-            "start_command": format!("cargo test --release -p eagle-node --features gpu-pow-matrix-block-rewards-dev --bin eagle-node phase7_import_queue -- --ignored --nocapture"),
+            "start_command": format!("cargo test --release -p solvyren-node --features gpu-pow-matrix-block-rewards-dev --bin solvyren-node phase7_import_queue -- --ignored --nocapture"),
             "cpu_model": cpu_model(), "logical_cpus": logical_cpus(), "sha_ni": sha_ni(),
             "memory_bytes": mem_bytes(), "rustc": rustc_version(), "profile": "release",
             "binary_path": BIN, "binary_sha256": binary_sha256(),
