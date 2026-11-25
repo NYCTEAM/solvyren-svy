@@ -164,6 +164,89 @@ fn dda_retarget_triggers_when_parent_height_multiple_of_60() {
 }
 
 #[test]
+fn dda_mainnet_rolling_window_requires_activation_and_mainnet_identity() {
+    let (mut algorithm, hashes) = chain(&spaced(G, 140, |_| 40_000), 800_000);
+    let activation = Some(121);
+    assert_eq!(algorithm.difficulty_with_activation(hashes[130], activation).unwrap(), 800_000);
+
+    algorithm.genesis = MAINNET_GENESIS.parse().unwrap();
+    assert_eq!(algorithm.difficulty_with_activation(hashes[110], activation).unwrap(), 800_000);
+    assert_eq!(algorithm.difficulty_with_activation(hashes[120], activation).unwrap(), 533_333);
+    assert_eq!(algorithm.difficulty_with_activation(hashes[129], activation).unwrap(), 533_333);
+    assert_eq!(algorithm.difficulty_with_activation(hashes[130], activation).unwrap(), 533_333);
+    assert_eq!(algorithm.difficulty_with_activation(hashes[130], None).unwrap(), 800_000);
+}
+
+#[test]
+fn dda_mainnet_release_activates_at_block_24121() {
+    let (mut algorithm, hashes) = chain(&spaced(G, 24_121, |_| 40_000), 800_000);
+    algorithm.genesis = MAINNET_GENESIS.parse().unwrap();
+    assert_eq!(algorithm.difficulty(hashes[24_119]).unwrap(), 800_000);
+    assert_eq!(algorithm.difficulty(hashes[24_120]).unwrap(), 533_333);
+    assert_eq!(algorithm.difficulty(hashes[24_121]).unwrap(), 533_333);
+}
+
+#[test]
+fn dda_mainnet_rolling_window_recovers_on_cpu_and_adjusts_when_gpu_returns() {
+    // Fixed-rate replay with an abrupt drop from 80,000 to 12,500 work
+    // units/s, followed by recovery. Every new block uses the real algorithm.
+    let ts = spaced(G, 120, |_| 10_000);
+    let (mut algorithm, hashes) = chain(&ts, 800_000);
+    algorithm.genesis = MAINNET_GENESIS.parse().unwrap();
+    let mut parent = hashes[120];
+    let mut timestamp = ts[120];
+    let mut cumulative = 120 * 800_000;
+    for height in 121..=180 {
+        let difficulty = algorithm.difficulty_with_activation(parent, Some(121)).unwrap();
+        let rate = if height < 151 { 12_500 } else { 80_000 };
+        let interval = (difficulty * 1_000 / rate).max(5_000);
+        match height {
+            121 => assert_eq!(interval, 64_000),
+            122 => assert_eq!(difficulty, 533_333),
+            130 => assert_eq!(interval, 11_985),
+            140 | 175 => assert_eq!(interval, 10_000),
+            151 => assert_eq!(interval, 5_000),
+            170 => assert_eq!(interval, 9_793),
+            _ => {}
+        }
+        timestamp += interval as u64;
+        cumulative += difficulty;
+        let header = Header::new(
+            height, H256::from_low_u64_be(u64::from(height) + 1),
+            H256::repeat_byte(0x5a), parent, Digest::default(),
+        );
+        let hash = header.hash();
+        let chain = Arc::get_mut(&mut algorithm.client).unwrap();
+        chain.headers.insert(hash, header);
+        chain.timestamps.insert(hash, timestamp);
+        chain.aux.insert(hash, (difficulty, cumulative));
+        parent = hash;
+    }
+}
+
+#[test]
+fn dda_mainnet_rolling_window_rejects_non_increasing_timestamps() {
+    let ts = spaced(G, 130, |height| if height == 121 { 0 } else { 10_000 });
+    let (mut algorithm, hashes) = chain(&ts, 125_000);
+    algorithm.genesis = MAINNET_GENESIS.parse().unwrap();
+    let error = err_text(algorithm.difficulty_with_activation(hashes[130], Some(121)));
+    assert!(error.contains("timestamps must be strictly increasing"), "{error}");
+}
+
+#[test]
+fn dda_mainnet_rolling_window_checks_aux_and_integer_limits() {
+    let (mut algorithm, hashes) = chain(&spaced(G, 130, |_| 10_000), 125_000);
+    algorithm.genesis = MAINNET_GENESIS.parse().unwrap();
+    Arc::get_mut(&mut algorithm.client).unwrap().aux.remove(&hashes[128]);
+    let error = err_text(algorithm.difficulty_with_activation(hashes[130], Some(121)));
+    assert!(error.contains("missing PoW aux in rolling window"), "{error}");
+    assert_eq!(rolling_difficulty(1, U256::from(10u32), 1_000_000), 1);
+    assert_eq!(rolling_difficulty(1, U256::from(10u32), 1_000), 2);
+    let max = MAX_EXPERIMENTAL_DIFFICULTY;
+    assert_eq!(rolling_difficulty(max, U256::from(max) * U256::from(10u32), 1), max);
+}
+
+#[test]
 fn dda_proposed_first_window_elapsed_is_ts60_minus_genesis() {
     // Non-zero genesis timestamp G (T5-02: only a zero start timestamp skips).
     // genesis -> 1 is 150_000 ms, then 59 x 5_000 ms.

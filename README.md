@@ -1,5 +1,21 @@
 # Solvyren mainnet node
 
+## Required full-node upgrade before block 24,121
+
+Install the rolling-retarget release before mainnet reaches block **24,121**.
+Stop the existing node, replace its executable, then restart it with the same
+chain specification, data directory, and launch options. Verify the genesis
+hash and compare a finalized block hash with SVYscan after the restart.
+Starting at block 24,121, validators recalculate difficulty for each block
+from the work and block timestamps in the preceding 10 intervals. The
+target remains a 10-second average. Mining clients can continue to use their
+existing pool URL and proof protocol.
+
+**主网全节点升级。** 请在区块 **#24121** 前更换节点程序。停止旧节点后，
+使用原来的链规格、数据目录和启动参数重启。启动后核对创世哈希及最终确认区块。
+从 #24121 起，主网按最近 10 个区块间隔的工作量和时间戳逐块计算难度，
+目标平均出块时间为 10 秒。矿工可以继续使用原矿池地址及挖矿协议。
+
 Run a full node to independently synchronize and verify the Solvyren SVY mainnet. Each node generates its own local network identity. A GPU and a payout wallet are optional for other roles and are not required to run a full node.
 
 | Network | Value |
@@ -12,7 +28,7 @@ Run a full node to independently synchronize and verify the Solvyren SVY mainnet
 
 ## Run on Linux x86-64
 
-Download the Linux executable archive, `mainnet.raw.json` and `SHA256SUMS` from the [node release](https://github.com/NYCTEAM/solvyren-svy/releases/tag/mainnet-smw-v1). In the download directory run:
+Download the Linux executable archive, `mainnet.raw.json` and `SHA256SUMS` from the [node release](https://github.com/NYCTEAM/solvyren-svy/releases/tag/mainnet-retarget-24121). In the download directory run:
 
 ```sh
 sha256sum --check --ignore-missing SHA256SUMS

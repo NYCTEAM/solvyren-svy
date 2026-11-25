@@ -97,6 +97,16 @@ pub(crate) fn target_for_difficulty(difficulty: u128) -> Result<[u8; 32], &'stat
 
 const TARGET_BLOCK_MILLIS: u64 = 10_000;
 const RETARGET_BLOCKS: u32 = 60;
+const MAINNET_GENESIS: &str =
+    "0x678107bc4d21a4e7f9b12ee817af0c93f074cf04fbd7ee716976af42ca92f4c8";
+const MAINNET_ROLLING_RETARGET_BLOCKS: u32 = 10;
+// First block using the new rule, set in the coordinated network release.
+const MAINNET_ROLLING_RETARGET_ACTIVATION: Option<u32> = Some(24_121);
+const _: () = {
+    if let Some(height) = MAINNET_ROLLING_RETARGET_ACTIVATION {
+        assert!(height > MAINNET_ROLLING_RETARGET_BLOCKS);
+    }
+};
 /// Closed-testnet activation for the verified-share pool.  The existing chain
 /// reached difficulty one while authoring only one small GPU batch per block,
 /// so ordinary interval retargeting cannot make a continuously searching GPU
@@ -135,6 +145,13 @@ fn retarget_difficulty(old: u128, elapsed_millis: u64) -> Result<u128, &'static 
         .max(U256::one())
         .min(U256::from(MAX_EXPERIMENTAL_DIFFICULTY))
         .as_u128())
+}
+
+fn rolling_difficulty(old: u128, work: U256, elapsed_millis: u64) -> u128 {
+    let target = work * U256::from(TARGET_BLOCK_MILLIS) / U256::from(elapsed_millis);
+    let lower = (old * 2 / 3).max(1);
+    let upper = (old * 3).div_ceil(2).min(MAX_EXPERIMENTAL_DIFFICULTY);
+    target.clamp(U256::from(lower), U256::from(upper)).as_u128()
 }
 
 /// Chain view read by [`DynamicDifficultyAlgorithm`]. Production uses the
@@ -184,8 +201,8 @@ impl DifficultyChain for crate::service::FullClient {
     }
 }
 
-/// Branch-local experimental retargeting with a continuous window (T5).
-/// When the parent height is 60k (k >= 1) the next difficulty is recomputed
+/// Branch-local retargeting with a continuous window (T5).
+/// Under the original rule, when the parent height is 60k (k >= 1), difficulty is recomputed
 /// from elapsed = ts(60k) - ts(60(k-1)) over all 60 intervals; the first
 /// window starts at the genesis timestamp. If the window start's timestamp is
 /// 0 (genesis without `Timestamp::Now`), the retarget is skipped and the
@@ -194,11 +211,13 @@ impl DifficultyChain for crate::service::FullClient {
 /// including the former 60(k-1) -> 60(k-1)+1 seam, must be strictly
 /// increasing. elapsed is clamped to [300_000, 1_200_000] ms around an
 /// expected 600_000 ms. Other blocks inherit their parent's value.
+/// After mainnet activation, each block uses the cumulative work and elapsed
+/// time of the previous 10 intervals. The factor-of-1.5 bounds limit reactions
+/// to atypical timestamps and short-lived changes in hash rate.
 /// The future-drift limit and the adjacent MinimumPeriod are deliberately not
 /// duplicated here: they stay enforced by the inherited pallet-timestamp
 /// 42.0.0 check_inherent (MAX_TIMESTAMP_DRIFT_MILLIS, TooFarInFuture) and
 /// Runtime MinimumPeriod rules on the same import path.
-/// This is deterministic consensus plumbing, not calibrated production policy.
 pub(crate) struct DynamicDifficultyAlgorithm<C = crate::service::FullClient> {
     genesis: H256,
     client: Arc<C>,
@@ -226,10 +245,12 @@ impl<C> DynamicDifficultyAlgorithm<C> {
     }
 }
 
-impl<C: DifficultyChain> PowAlgorithm<Block> for DynamicDifficultyAlgorithm<C> {
-    type Difficulty = u128;
-
-    fn difficulty(&self, parent: H256) -> Result<Self::Difficulty, Error<Block>> {
+impl<C: DifficultyChain> DynamicDifficultyAlgorithm<C> {
+    fn difficulty_with_activation(
+        &self,
+        parent: H256,
+        activation: Option<u32>,
+    ) -> Result<u128, Error<Block>> {
         if let WorkAlgorithm::Mx10N16(context) = self.work_algorithm {
             context.ensure_genesis(self.genesis).map_err(Error::Other)?;
         }
@@ -277,16 +298,25 @@ impl<C: DifficultyChain> PowAlgorithm<Block> for DynamicDifficultyAlgorithm<C> {
                 return Ok(MX10_SHARE_POOL_BOOTSTRAP_DIFFICULTY);
             }
         }
-        if parent_number % RETARGET_BLOCKS != 0 {
+        let rolling = activation.is_some_and(|height| {
+            next_number >= height
+                && self.genesis == MAINNET_GENESIS.parse::<H256>().expect("pinned mainnet genesis")
+        });
+        let window_blocks = if rolling {
+            MAINNET_ROLLING_RETARGET_BLOCKS
+        } else {
+            SAMPLE_INTERVALS
+        };
+        if !rolling && parent_number % window_blocks != 0 {
             return Ok(old);
         }
 
-        // Continuous window: walk all 60 steps from 60k back to 60(k-1),
-        // checking every adjacent pair (the former seam included).
+        // Walk the selected number of consecutive intervals on this branch.
         let newest_timestamp = self.client.pow_timestamp(parent)?;
         let mut later_timestamp = newest_timestamp;
         let mut cursor = parent;
-        for _ in 0..SAMPLE_INTERVALS {
+        let mut work = U256::zero();
+        for _ in 0..window_blocks {
             let header = self.client.pow_header(cursor)?;
             let ancestor = *header.parent_hash();
             let earlier_timestamp = self.client.pow_timestamp(ancestor)?;
@@ -295,11 +325,25 @@ impl<C: DifficultyChain> PowAlgorithm<Block> for DynamicDifficultyAlgorithm<C> {
                     "PoW retarget window timestamps must be strictly increasing".into(),
                 ));
             }
+            if rolling {
+                let difficulty = if cursor == parent {
+                    old
+                } else {
+                    self.client
+                        .pow_aux(cursor)?
+                        .ok_or_else(|| Error::Other(format!("missing PoW aux in rolling window at {cursor:?}")))?
+                        .difficulty
+                };
+                if difficulty == 0 || difficulty > MAX_EXPERIMENTAL_DIFFICULTY {
+                    return Err(Error::Other("invalid PoW difficulty in rolling window".into()));
+                }
+                work += U256::from(difficulty);
+            }
             later_timestamp = earlier_timestamp;
             cursor = ancestor;
         }
         let window_start = self.client.pow_header(cursor)?;
-        if *window_start.number() + RETARGET_BLOCKS != parent_number {
+        if window_start.number().checked_add(window_blocks) != Some(parent_number) {
             return Err(Error::Other(
                 "PoW retarget window does not start at the previous retarget height".into(),
             ));
@@ -320,7 +364,18 @@ impl<C: DifficultyChain> PowAlgorithm<Block> for DynamicDifficultyAlgorithm<C> {
         let elapsed = newest_timestamp
             .checked_sub(later_timestamp)
             .ok_or_else(|| Error::Other("PoW retarget elapsed time underflow".into()))?;
+        if rolling {
+            return Ok(rolling_difficulty(old, work, elapsed));
+        }
         retarget_difficulty(old, elapsed).map_err(|error| Error::Other(error.into()))
+    }
+}
+
+impl<C: DifficultyChain> PowAlgorithm<Block> for DynamicDifficultyAlgorithm<C> {
+    type Difficulty = u128;
+
+    fn difficulty(&self, parent: H256) -> Result<Self::Difficulty, Error<Block>> {
+        self.difficulty_with_activation(parent, MAINNET_ROLLING_RETARGET_ACTIVATION)
     }
 
     fn verify(
