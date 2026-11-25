@@ -34,7 +34,7 @@ Download the Linux executable archive, `mainnet.raw.json` and `SHA256SUMS` from 
 sha256sum --check --ignore-missing SHA256SUMS
 gzip -dc solvyren-node-linux-x86_64.gz > solvyren-node
 chmod +x solvyren-node
-./solvyren-node --chain ./mainnet.raw.json --base-path ./svy-data --sync full --rpc-methods Safe --no-telemetry
+./solvyren-node --chain ./mainnet.raw.json --base-path ./svy-data --sync full --rpc-methods Safe --no-telemetry --listen-addr /ip4/0.0.0.0/tcp/30333
 ```
 
 ## Run on Windows x86-64
@@ -43,12 +43,42 @@ Download the Windows executable, chain specification and checksums from the same
 
 ```powershell
 Get-FileHash .\solvyren-node-windows-x86_64.exe, .\mainnet.raw.json -Algorithm SHA256
-.\solvyren-node-windows-x86_64.exe --chain .\mainnet.raw.json --base-path .\svy-data --sync full --rpc-methods Safe --no-telemetry
+.\solvyren-node-windows-x86_64.exe --chain .\mainnet.raw.json --base-path .\svy-data --sync full --rpc-methods Safe --no-telemetry --listen-addr /ip4/0.0.0.0/tcp/30333
 ```
 
 ## Verify synchronization
 
-The raw specification includes the public P2P bootnodes. Allow outbound TCP 30343 to contact them. Leave the local RPC listener on loopback. From another terminal query the node:
+Keep the explicit TCP listen address in the launch command. Allow inbound TCP
+30333 in the host firewall and cloud security group if the node should accept
+incoming peers. Allow outbound TCP 30343 to reach the bootnodes in the raw
+chain specification. Leave the local RPC listener on loopback.
+
+**节点接入。** 保留命令中的 `--listen-addr /ip4/0.0.0.0/tcp/30333`。
+允许出站 TCP 30343 以连接引导节点。若向其他节点提供入站连接，在防火墙及云安全组
+放行入站 TCP 30333。节点本机的 RPC 保持在回环地址。
+
+BOOT2 is the primary bootstrap peer. BOOT1 and BOOT3 are additional seeds.
+To keep BOOT2 as a persistent peer, append the option below. The other public
+peers can still be discovered.
+
+```text
+--reserved-nodes /dns4/boot2.solvyren.com/tcp/30343/p2p/12D3KooWEzpseawXDTCH7Pbd9sUsj6AdtgBehhSpjRz4oSCm6N26
+```
+
+### Public HTTPS JSON-RPC
+
+Send a JSON-RPC 2.0 POST to `https://scan.solvyren.com/rpc`. The endpoint uses
+the BOOT1 archive and falls back to BOOT2 for supported queries. Historical
+state may require the archive. The gateway accepts read methods such as
+`chain_getBlockHash`, `chain_getHeader`, `chain_getFinalizedHead` and
+`state_getStorage`. Wallet traffic uses the WebSocket endpoint
+`wss://wallet.solvyren.com/wallet-rpc`.
+
+```sh
+curl -sS https://scan.solvyren.com/rpc -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"chain_getBlockHash","params":[0]}'
+```
+
+From another terminal query the node:
 
 ```sh
 curl -s http://127.0.0.1:9944 -H 'Content-Type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"chain_getBlockHash","params":[0]}'
@@ -64,7 +94,7 @@ The Rust workspace includes the native node, runtime, pallets, mining client, an
 
 ```sh
 SKIP_WASM_BUILD=1 cargo build --locked --release -p eagle-node --bin eagle-node --features svy-boot3-cpu
-./target/release/eagle-node --chain ./network/mainnet.raw.json --base-path ./svy-data --sync full
+./target/release/eagle-node --chain ./network/mainnet.raw.json --base-path ./svy-data --sync full --listen-addr /ip4/0.0.0.0/tcp/30333
 ```
 
 The build uses the checked-in genesis Wasm. SKIP_WASM_BUILD skips auxiliary SDK Wasm builds. Use full synchronization so the node executes and verifies historical blocks. The default role is a non-voting full node. Source-level regression tests and historical consensus rules are kept for verification of existing blocks. Licensing follows the crate manifests and source notices, including the vendored Substrate consensus crate.
