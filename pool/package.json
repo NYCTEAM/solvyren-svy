@@ -1,0 +1,5 @@
+{
+  "name": "solvyren-independent-pool", "version": "0.1.0", "private": true,
+  "type": "module", "engines": { "node": ">=24" },
+  "dependencies": { "@polkadot/api": "17.0.2", "@polkadot/util-crypto": "^14.0.0" }
+}

@@ -1,0 +1,12 @@
+[Unit]
+Description=Local verified SMW sessions
+
+[Socket]
+ListenStream=/run/svy-pool-session.sock
+SocketUser=svypool
+SocketMode=0600
+Accept=yes
+MaxConnections=64
+
+[Install]
+WantedBy=sockets.target

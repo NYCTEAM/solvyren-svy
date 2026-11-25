@@ -1,0 +1,17 @@
+[Unit]
+Description=Seal verified shares through the finalized chain head
+After=network.target
+
+[Service]
+User=svypool
+Group=svypool
+ExecStart=/usr/bin/python3 -B /opt/svy-pool/server/seal_rounds.py
+Restart=on-failure
+RestartSec=3
+UMask=0027
+NoNewPrivileges=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/svy-pool-shares
+
+[Install]
+WantedBy=multi-user.target

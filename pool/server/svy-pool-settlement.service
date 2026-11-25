@@ -1,0 +1,19 @@
+[Unit]
+Description=Independent pool finalized reward settlement
+After=network.target
+
+[Service]
+User=svypay
+Group=svypay
+SupplementaryGroups=svypool
+ExecStart=/usr/bin/node /opt/svy-pool/server/settle.mjs /etc/svy-pool/config.json
+StateDirectory=svy-pool-settlement
+StateDirectoryMode=0700
+NoNewPrivileges=yes
+ProtectSystem=strict
+PrivateTmp=yes
+Restart=on-failure
+RestartSec=15
+
+[Install]
+WantedBy=multi-user.target

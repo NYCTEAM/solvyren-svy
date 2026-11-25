@@ -1,0 +1,17 @@
+[Unit]
+Description=Public SMW/1 TLS pool endpoint
+Requires=svy-pool.socket
+After=svy-pool.socket network.target
+
+[Service]
+User=svypool
+ExecStart=/usr/bin/python3 -B /opt/svy-pool/server/edge.py %d/fullchain %d/key
+LoadCredential=fullchain:/etc/svy-pool/fullchain.pem
+LoadCredential=key:/etc/svy-pool/key.pem
+Restart=on-failure
+NoNewPrivileges=yes
+ProtectSystem=strict
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,9 @@
+{
+  "archiveRpc": "ws://127.0.0.1:9954",
+  "rewardWallet": "REPLACE_WITH_POOL_BLOCK_REWARD_ADDRESS",
+  "feeWallet": "REPLACE_WITH_OPERATOR_FEE_ADDRESS",
+  "feeBps": 100,
+  "startHeight": 0,
+  "ledger": "/var/lib/svy-pool-settlement/ledger.sqlite",
+  "shares": "/var/lib/svy-pool-shares/shares.sqlite"
+}

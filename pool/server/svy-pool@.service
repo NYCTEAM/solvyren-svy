@@ -1,0 +1,11 @@
+[Service]
+User=svypool
+Group=svypool
+UMask=0027
+ExecStart=/usr/bin/python3 -B /opt/svy-pool/server/session.py
+StandardInput=socket
+StandardOutput=socket
+NoNewPrivileges=yes
+ProtectSystem=strict
+PrivateTmp=yes
+ReadWritePaths=/var/lib/svy-pool-shares /run/svy-pool
