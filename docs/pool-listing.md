@@ -19,6 +19,8 @@ BOOT2 和 BOOT3 自主网区块 **#22623** 起，将新产生的官方池服务�
 
 第三方自建并独立结算的矿池自行公布费率和收款地址，官方附加费为零。例如第三方池收费 1%，100 SVY 毛收益中矿工得 99 SVY，该池得 1 SVY。第三方平台若把矿机连接到 BOOT2 或 BOOT3，则适用官方池费率。
 
+使用自有域名并独立出块、设置费率和结算的运营者，可查看[第三方独立矿池开发预览](https://github.com/NYCTEAM/solvyren-svy/tree/pool/independent-smw/pool)。预览包的真实 GPU 证明已在隔离环境验收，第三方独立出块与付款仍需主网端到端验收。
+
 ## Linux x86-64 自定义矿工
 
 平台支持运行自定义 Linux 程序时，在模板中配置[官方 AMD / NVIDIA 多卡预览包 1.2.1](https://solvyren.com/downloads/smw/Solvyren-SMW-1.2.1-Linux-x64-MultiGPU-Preview.tar.gz)，用[官方 SHA-256 清单](https://solvyren.com/downloads/smw/SHA256SUMS)校验后解压。按下载页准备驱动和 Python 依赖，并在矿机系统中设置显卡功耗上限。
