@@ -102,6 +102,7 @@ frame-benchmarking-cli = { workspace = true, default-features = true }
 [features]
 incinerator-rehearsal = ["eagle-runtime/incinerator-rehearsal"]
 svy-boot3-cpu = ["svy-transfer-fee-candidate"]
+svy-independent-pool = ["svy-boot3-cpu"]
 svy-boot3-rehearsal = ["svy-boot3-cpu"]
 svy-dead-mainnet-drill = ["svy-boot3-rehearsal"]
 svy-transfer-fee-candidate = ["svy-matrix-live", "eagle-runtime/svy-transfer-fee-candidate"]

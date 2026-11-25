@@ -432,7 +432,16 @@ pub fn new_full<
     let cpu_beneficiary = {
         #[cfg(feature = "svy-boot3-cpu")]
         {
-            match std::env::var_os("SVY_BOOT3_CPU") {
+            if let Some(address) = std::env::var_os("SVY_POOL_REWARD_ADDRESS") {
+                if !cfg!(feature = "svy-independent-pool") || config.role.is_authority()
+                    || gpu_pow_author || std::env::var_os("SVY_BOOT3_CPU").is_some()
+                {
+                    return Err(ServiceError::Other("independent GPU pool requires a dedicated non-voting pool build".into()));
+                }
+                let address = address.into_string().map_err(|_| ServiceError::Other("invalid pool wallet".into()))?;
+                let account = crate::svy_address::decode(&address).map_err(ServiceError::Other)?;
+                Some(eagle_runtime::PowBeneficiaryV1::new(account).encode_payload())
+            } else { match std::env::var_os("SVY_BOOT3_CPU") {
                 None => None,
                 Some(v) if v == "1" && !config.role.is_authority() && !gpu_pow_author => {
                     let address = std::env::var("SVY_BOOT3_REWARD_ADDRESS").map_err(|_| {
@@ -444,7 +453,7 @@ pub fn new_full<
                     Some(eagle_runtime::PowBeneficiaryV1::new(beneficiary).encode_payload())
                 }
                 _ => return Err(ServiceError::Other("CPU authoring requires a dedicated non-voting full node".into())),
-            }
+            }}
         }
         #[cfg(not(feature = "svy-boot3-cpu"))]
         { None::<Vec<u8>> }
@@ -862,11 +871,13 @@ pub fn new_full<
             {
                 use sp_blockchain::HeaderBackend;
                 // A production miner must use boot3's existing public P2P identity.
-                if !cfg!(feature = "svy-boot3-rehearsal") && network.local_peer_id().to_string() != "12D3KooWKBcH7DvCCkNAmjTMo4dB9dne1EuEBQrRMhBvFvrmHCjn" {
+                let independent = cfg!(feature = "svy-independent-pool") && std::env::var_os("SVY_POOL_REWARD_ADDRESS").is_some();
+                if !independent && !cfg!(feature = "svy-boot3-rehearsal") && network.local_peer_id().to_string() != "12D3KooWKBcH7DvCCkNAmjTMo4dB9dne1EuEBQrRMhBvFvrmHCjn" {
                     return Err(ServiceError::Other("boot3 peer ID mismatch".into()));
                 }
                 let author_client = client.clone();
-                let work_export = match std::env::var_os("SVY_BOOT3_WORK_EXPORT_DIR") {
+                let job_dir_var = if independent { "SVY_POOL_JOB_DIR" } else { "SVY_BOOT3_WORK_EXPORT_DIR" };
+                let work_export = match std::env::var_os(job_dir_var) {
                     None => None,
                     Some(path) => {
                         let path = std::path::PathBuf::from(path);
@@ -877,7 +888,10 @@ pub fn new_full<
                         Some(path)
                     }
                 };
-                let gpu_accept = std::env::var_os("SVY_BOOT3_GPU_ACCEPT").is_some_and(|flag| flag == "1");
+                let gpu_accept = independent || std::env::var_os("SVY_BOOT3_GPU_ACCEPT").is_some_and(|flag| flag == "1");
+                if independent && work_export.is_none() {
+                    return Err(ServiceError::Other("independent pool requires SVY_POOL_JOB_DIR".into()));
+                }
                 let work = async move {
                     let mut last_parent = None;
                     let mut cursor = None;
@@ -892,6 +906,7 @@ pub fn new_full<
                             futures::future::pending::<()>().await;
                         }
                         let smw = crate::smw_activation::active(crate::smw_activation::scheduled(genesis), u64::from(head.best_number));
+                        if independent && !smw { continue; }
                         let challenge = if smw { crate::gpu_pow_mx10::challenge_from_pre_hash(genesis, meta.pre_hash) } else { crate::gpu_pow::challenge_from_pre_hash(genesis, meta.pre_hash) };
                         let target = crate::gpu_pow_consensus::target_for_difficulty(meta.difficulty).expect("valid consensus difficulty");
                         if let Some(directory) = &work_export {
@@ -937,6 +952,7 @@ pub fn new_full<
                                         }
                                     }
                                 }
+                                if independent { continue; }
                                 let deadline = gpu_wait.filter(|(parent, _)| *parent == meta.best_hash)
                                     .map_or_else(|| Instant::now() + Duration::from_millis(750), |(_, deadline)| deadline);
                                 gpu_wait = Some((meta.best_hash, deadline));
