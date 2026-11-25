@@ -32,7 +32,9 @@ def template():
         raise ValueError("invalid template")
     if not smw_share.hex32(job["parentHash"][2:]): raise ValueError("invalid parent")
     if not 0 <= time.time()-ROOT.stat().st_mtime <= 20:
-        raise ValueError("stale template")
+        best = rpc("chain_getBlockHash", [])
+        if best != job["parentHash"] or int(rpc("chain_getHeader", [best])["number"], 16) + 1 != job["height"]:
+            raise ValueError("stale template")
     return job
 
 

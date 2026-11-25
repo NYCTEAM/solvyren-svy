@@ -1,0 +1,22 @@
+[Unit]
+Description=Independent Solvyren GPU pool node
+After=network-online.target systemd-tmpfiles-setup.service
+
+[Service]
+User=svynode
+Group=svynode
+SupplementaryGroups=svypool
+UMask=0027
+EnvironmentFile=/etc/svy-pool/node.env
+Environment=SVY_POOL_JOB_DIR=/run/svy-pool
+ExecStart=/opt/svy-pool/eagle-node --chain /etc/svy-pool/mainnet.raw.json --base-path /var/lib/svy-pool-node --state-pruning archive --blocks-pruning archive --rpc-port 9954 --rpc-methods Safe
+StateDirectory=svy-pool-node
+Restart=on-failure
+RestartSec=8
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ReadWritePaths=/run/svy-pool
+
+[Install]
+WantedBy=multi-user.target

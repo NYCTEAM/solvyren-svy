@@ -8,6 +8,18 @@
 
 只在本池赢得且最终确认的区块中，按该轮同一高度和父块下各钱包已接受的工作量分配收益。先以最大余数法分完最小单位，再从每个钱包的毛额向下取整计算服务费。区块、每个钱包的毛额/净额/手续费及应付余额在同一笔 SQLite 事务内记账。零份额的自有区块会暂停供运营者对账。外池区块只推进游标。启动后配置和账本绑定，禁止通过修改配置文件回溯调整费率。
 
+## 独立节点构建
+
+使用本分支的源代码和仓库中的主网规格。在仓库根目录运行：
+
+```sh
+SKIP_WASM_BUILD=1 cargo build --locked --release -p eagle-node --features svy-independent-pool
+install -m 0755 target/release/eagle-node /opt/svy-pool/eagle-node
+install -m 0644 network/mainnet.raw.json /etc/svy-pool/mainnet.raw.json
+```
+
+先创建 /etc/svy-pool 和 /opt/svy-pool。创建系统用户与同名组 svynode；在 /etc/svy-pool/node.env 中配置 SVY_POOL_REWARD_ADDRESS 为运营者独占的公开区块奖励地址，必须与 config.json 的 rewardWallet 一致。使用 [节点服务](server/svy-pool-node.service) 启动归档全节点，生成自己的 P2P 身份，等待同步。在此模式下节点导出本地任务并再次验证 GPU 提交的获胜证明。运营者无需官方节点的身份、官方钱包凭据或投票密钥。该节点使用现有 SMW 共识和最终确认规则。
+
 ## Linux 环境
 
 需要 systemd、Python 3.9+、Node.js 24+ 和运营者自己的归档 RPC。将本目录安装到 `/opt/svy-pool`，在该目录执行 `npm ci --omit=dev --ignore-scripts`。以下服务分开运行：
