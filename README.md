@@ -55,13 +55,14 @@ The build uses the checked-in genesis Wasm. SKIP_WASM_BUILD skips auxiliary SDK 
 
 ## GPU mining
 
-Connect the Solvyren GPU miner using your public SVY mainnet payout address and worker name. Both official endpoints use SMW/1 over TLS and share the same settlement ledger.
+Set the Pool URL to `tls://pool.solvyren.com:18444` and enter your public SVY mainnet payout address and worker name. The unified endpoint uses SMW/1 over TLS. It prefers Hong Kong (BOOT2) and sends reconnecting miners to the United States (BOOT3) if BOOT2 is unavailable. Both servers share the same settlement ledger.
 
 | Region | Pool URL | Pool fee |
 | --- | --- | --- |
-| Hong Kong (BOOT2) | `tls://boot2.solvyren.com:18444` | 0.25% |
-| United States (BOOT3, default) | `tls://boot3.solvyren.com:18444` | 0.25% |
+| Unified (recommended) | `tls://pool.solvyren.com:18444` | 0.25% |
+| Hong Kong (direct) | `tls://boot2.solvyren.com:18444` | 0.25% |
+| United States (direct) | `tls://boot3.solvyren.com:18444` | 0.25% |
 
-Starting at block 19,150, the official pool deducts the fee once from each wallet’s gross GPU mining rewards. For every 100 SVY earned, the miner receives 99.75 SVY. [Download the mining client](https://solvyren.com/downloads/smw/)
+The official pool fee is 0.25% of gross GPU mining rewards from block 19,150 and of gross cloud plan mining rewards from block 22,661. For every 100 SVY earned, the miner receives 99.75 SVY. [Official pool dashboard](https://pool.solvyren.com/) · [Download the mining client](https://solvyren.com/downloads/smw/)
 
 [Integration guide for third-party mining platforms (中文)](docs/pool-listing.md)
