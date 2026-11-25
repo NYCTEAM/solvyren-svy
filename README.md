@@ -57,6 +57,8 @@ The build uses the checked-in genesis Wasm. SKIP_WASM_BUILD skips auxiliary SDK 
 
 Set the Pool URL to `tls://pool.solvyren.com:18444` and enter your public SVY mainnet payout address and worker name. The unified endpoint uses SMW/1 over TLS. It prefers Hong Kong (BOOT2) and sends reconnecting miners to the United States (BOOT3) if BOOT2 is unavailable. Both servers share the same settlement ledger.
 
+Windows NVIDIA 1.3.1 and Linux / HiveOS 1.2.3 use this endpoint by default.
+
 | Region | Pool URL | Pool fee |
 | --- | --- | --- |
 | Unified (recommended) | `tls://pool.solvyren.com:18444` | 0.25% |
