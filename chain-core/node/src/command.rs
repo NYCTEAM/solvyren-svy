@@ -13,7 +13,7 @@ use sp_keyring::Sr25519Keyring;
 
 impl SubstrateCli for Cli {
     fn impl_name() -> String {
-        "Eagle AI Network".into()
+        "Solvyren".into()
     }
 
     fn impl_version() -> String {
@@ -256,8 +256,17 @@ pub fn run() -> sc_cli::Result<()> {
             runner.sync_run(|config| cmd.run::<Block>(&config))
         }
         None => {
+            let network = &cli.run.network_params;
+            let use_mainnet_tcp_default = network.listen_addr.is_empty();
+            let p2p_port = network.port.unwrap_or(30333);
             let runner = cli.create_runner(&cli.run)?;
-            runner.run_node_until_exit(|config| async move {
+            runner.run_node_until_exit(|mut config| async move {
+                if use_mainnet_tcp_default && config.chain_spec.id() == chain_spec::SVY_MATRIX_LIVE_ID {
+                    config.network.listen_addresses = [
+                        format!("/ip6/::/tcp/{p2p_port}"),
+                        format!("/ip4/0.0.0.0/tcp/{p2p_port}"),
+                    ].into_iter().map(|address| address.parse().expect("valid mainnet TCP address")).collect();
+                }
                 match config.network.network_backend {
                     sc_network::config::NetworkBackendType::Libp2p => {
                         service::new_full::<
