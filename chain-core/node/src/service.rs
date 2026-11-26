@@ -713,10 +713,24 @@ pub fn new_full<
             prometheus_registry.as_ref(),
             telemetry.as_ref().map(|value| value.handle()),
         );
+        let boot3_author = pow_authoring.is_none() && cfg!(feature = "svy-boot3-cpu");
+        let boot3_seal_delay = if boot3_author {
+            Duration::from_millis(eagle_runtime::SLOT_DURATION / 2)
+        } else {
+            Duration::ZERO
+        };
         let mining_inherent = move |_, ()| async move {
+            // Give BOOT3's early proposal the same nominal timestamp as the
+            // old delayed proposal. The seal is still held until the delay elapses.
+            let timestamp = sp_timestamp::Timestamp::current() + boot3_seal_delay.as_millis() as u64;
             Ok::<_, Box<dyn std::error::Error + Send + Sync>>(
-                sp_timestamp::InherentDataProvider::from_system_time(),
+                sp_timestamp::InherentDataProvider::new(timestamp),
             )
+        };
+        let proposal_delay = if boot3_author {
+            Duration::ZERO
+        } else {
+            Duration::from_millis(eagle_runtime::SLOT_DURATION)
         };
         let (mining_handle, mining_worker) = sc_consensus_pow::start_mining_worker(
             Box::new(author_import),
@@ -729,7 +743,7 @@ pub fn new_full<
             Some(beneficiary),
             mining_inherent,
             Duration::from_secs(1),
-            Duration::from_millis(eagle_runtime::SLOT_DURATION),
+            proposal_delay,
             Duration::from_secs(2),
         );
         task_manager.spawn_essential_handle().spawn_blocking(
@@ -882,11 +896,21 @@ pub fn new_full<
                     let mut last_parent = None;
                     let mut cursor = None;
                     let mut exported_pre_hash = None;
-                    let mut gpu_wait: Option<(sp_core::H256, Instant)> = None;
-                    loop {
+                    let mut parent_ready_at: Option<(sp_core::H256, Instant)> = None;
+                    let mut pending_seal: Option<(sp_core::H256, Vec<u8>, bool)> = None;
+                    'search: loop {
                         futures_timer::Delay::new(Duration::from_millis(75)).await;
-                        let Some((version, meta)) = mining_handle.snapshot() else { continue };
                         let head = author_client.info();
+                        let ready_at = match parent_ready_at {
+                            Some((parent, deadline)) if parent == head.best_hash => deadline,
+                            _ => {
+                                pending_seal = None;
+                                let deadline = Instant::now() + boot3_seal_delay;
+                                parent_ready_at = Some((head.best_hash, deadline));
+                                deadline
+                            }
+                        };
+                        let Some((version, meta)) = mining_handle.snapshot() else { continue };
                         if head.best_hash != meta.best_hash || last_parent == Some(meta.best_hash) { continue }
                         if cfg!(feature = "svy-boot3-rehearsal") && !cfg!(feature = "svy-dead-mainnet-drill") && head.best_number >= 2 {
                             futures::future::pending::<()>().await;
@@ -895,7 +919,8 @@ pub fn new_full<
                         let challenge = if smw { crate::gpu_pow_mx10::challenge_from_pre_hash(genesis, meta.pre_hash) } else { crate::gpu_pow::challenge_from_pre_hash(genesis, meta.pre_hash) };
                         let target = crate::gpu_pow_consensus::target_for_difficulty(meta.difficulty).expect("valid consensus difficulty");
                         if let Some(directory) = &work_export {
-                            if exported_pre_hash != Some(meta.pre_hash) {
+                            let job_path = directory.join("job.json");
+                            if exported_pre_hash != Some(meta.pre_hash) || !job_path.is_file() {
                                 let job = serde_json::json!({
                                     "genesis": format!("{genesis:?}"),
                                     "height": head.best_number + 1,
@@ -906,45 +931,54 @@ pub fn new_full<
                                 });
                                 let temp = directory.join("job.json.next");
                                 match std::fs::write(&temp, job.to_string())
-                                    .and_then(|()| std::fs::rename(&temp, directory.join("job.json"))) {
+                                    .and_then(|()| std::fs::rename(&temp, job_path)) {
                                     Ok(()) => exported_pre_hash = Some(meta.pre_hash),
                                     Err(error) => eprintln!("GPU work export unavailable: {error}"),
                                 }
                             }
                             if gpu_accept {
+                                if pending_seal.as_ref().is_some_and(|(pre_hash, _, _)| *pre_hash != meta.pre_hash) {
+                                    pending_seal = None;
+                                }
                                 // The relay writes a complete candidate with atomic rename. Only
-                                // this local, private directory is used; the node also verifies
-                                // the proof against its current pre-hash and consensus target.
-                                let submitted = directory.join("seal.bin");
-                                if let Ok(metadata) = std::fs::symlink_metadata(&submitted) {
-                                    if metadata.is_file() && !metadata.file_type().is_symlink()
-                                        && metadata.len() == crate::gpu_pow::CERTIFICATE_BYTES as u64 {
-                                        if let Ok(proof) = std::fs::read(&submitted) {
-                                            let _ = std::fs::remove_file(&submitted);
-                                            let valid = if smw { crate::smw_activation::verify(genesis, meta.pre_hash, &proof, target) } else { crate::gpu_pow::verify_pre_hash(genesis, meta.pre_hash, &proof, target).is_ok() };
-                                            if valid {
-                                                match mining_handle.submit_at_detailed(version, proof).await {
-                                                    sc_consensus_pow::SubmitOutcome::Imported => {
-                                                        eprintln!("BOOT3_GPU_IMPORTED height={} parent={:?} pre_hash={:?}", head.best_number + 1, meta.best_hash, meta.pre_hash);
-                                                        last_parent = Some(meta.best_hash);
-                                                        futures_timer::Delay::new(Duration::from_secs(10)).await;
-                                                        continue;
-                                                    }
-                                                    sc_consensus_pow::SubmitOutcome::Stale => continue,
-                                                    outcome => panic!("GPU import stopped; inspect chain before resuming: {outcome:?}"),
-                                                }
-                                            }
+                                // this local, private directory is used. Drop obsolete proofs
+                                // and hold the first valid proof for the current proposal.
+                                if pending_seal.is_none() {
+                                    for (name, cloud_cpu) in [("seal.bin", false), ("cloud-seal.bin", true)] {
+                                        let submitted = directory.join(name);
+                                        let Ok(metadata) = std::fs::symlink_metadata(&submitted) else { continue };
+                                        if !metadata.is_file() || metadata.file_type().is_symlink()
+                                            || metadata.len() != crate::gpu_pow::CERTIFICATE_BYTES as u64 {
+                                            continue;
+                                        }
+                                        let Ok(proof) = std::fs::read(&submitted) else { continue };
+                                        let _ = std::fs::remove_file(&submitted);
+                                        let valid = if smw { crate::smw_activation::verify(genesis, meta.pre_hash, &proof, target) } else { crate::gpu_pow::verify_pre_hash(genesis, meta.pre_hash, &proof, target).is_ok() };
+                                        if valid {
+                                            pending_seal = Some((meta.pre_hash, proof, cloud_cpu));
+                                            break;
                                         }
                                     }
                                 }
-                                let deadline = gpu_wait.filter(|(parent, _)| *parent == meta.best_hash)
-                                    .map_or_else(|| Instant::now() + Duration::from_millis(750), |(_, deadline)| deadline);
-                                gpu_wait = Some((meta.best_hash, deadline));
-                                if Instant::now() < deadline {
+                                if Instant::now() < ready_at {
                                     continue;
                                 }
+                                if let Some((_, proof, cloud_cpu)) = pending_seal.take() {
+                                    match mining_handle.submit_at_detailed(version, proof).await {
+                                        sc_consensus_pow::SubmitOutcome::Imported => {
+                                            let source = if cloud_cpu { "CLOUD_CPU" } else { "GPU" };
+                                            eprintln!("BOOT3_{source}_IMPORTED height={} parent={:?} pre_hash={:?}", head.best_number + 1, meta.best_hash, meta.pre_hash);
+                                            last_parent = Some(meta.best_hash);
+                                            continue 'search;
+                                        }
+                                        sc_consensus_pow::SubmitOutcome::Stale => continue 'search,
+                                        outcome => panic!("External seal import stopped; inspect chain before resuming: {outcome:?}"),
+                                    }
+                                }
+                                if Instant::now() < ready_at + Duration::from_millis(750) { continue; }
                             }
                         }
+                        if Instant::now() < ready_at { continue; }
                         let start = cursor.filter(|(hash, _)| *hash == meta.pre_hash).map_or(0u64, |(_, n)| n);
                         let end = start.saturating_add(64);
                         cursor = Some((meta.pre_hash, end));
@@ -954,7 +988,6 @@ pub fn new_full<
                                 sc_consensus_pow::SubmitOutcome::Imported => {
                                     eprintln!("BOOT3_CPU_IMPORTED height={} parent={:?} pre_hash={:?} nonce={}",head.best_number+1,meta.best_hash,meta.pre_hash,nonce);
                                     last_parent = Some(meta.best_hash);
-                                    futures_timer::Delay::new(Duration::from_secs(10)).await;
                                 }
                                 sc_consensus_pow::SubmitOutcome::Stale => (),
                                 outcome => panic!("CPU import stopped; inspect chain before resuming: {outcome:?}"),
