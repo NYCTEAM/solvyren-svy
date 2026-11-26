@@ -1,5 +1,9 @@
-* text=auto
+* text=auto eol=lf
 network/mainnet.raw.json -text
 *.wasm binary
 *.rs text eol=lf
 *.toml text eol=lf
+*.gz binary
+*.exe binary
+*.png binary
+*.zip binary
