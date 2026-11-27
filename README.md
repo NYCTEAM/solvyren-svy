@@ -1,5 +1,7 @@
 # Solvyren mainnet node
 
+[Official website](https://solvyren.com/) · [Whitepaper](https://solvyren.com/whitepaper) · [Mainnet explorer](https://scan.solvyren.com/explorer) · [Run a full node](https://solvyren.com/node)
+
 ## Full-node release: mainnet-retarget-24121
 
 The difficulty retarget activated at block 24,121 and mainnet is past that height.
